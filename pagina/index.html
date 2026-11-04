@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monchosos para Android</title>
+  <meta name="description" content="Descarga la app de Monchosos para tomar pedidos, cobrar y llevar el inventario.">
+  <meta name="theme-color" content="#571401">
+  <link rel="icon" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;800&family=Rye&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cafe: #571401;
+      --cafe-hondo: #3a0d01;
+      --mostaza: #e0a100;
+      --ketchup: #b3261e;
+      --ticket: #fffdf8;
+      --tinta: #2a1a12;
+      --tinta-suave: #6b5a50;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--cafe); }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Libre Franklin", system-ui, sans-serif;
+      font-size: 1.0625rem;
+      line-height: 1.55;
+      color: #fbe9dc;
+      background:
+        radial-gradient(120% 60% at 50% 0%, #6e1a03 0%, var(--cafe) 55%, var(--cafe-hondo) 100%);
+    }
+
+    main {
+      max-width: 30rem;
+      margin: 0 auto;
+      padding: 3rem 1.25rem 4rem;
+    }
+
+    /* ---------- Portada ---------- */
+    .portada { text-align: center; }
+
+    .portada img {
+      width: 9.5rem;
+      height: 9.5rem;
+      border-radius: 50%;
+      box-shadow: 0 0 0 6px var(--mostaza), 0 18px 40px rgba(0, 0, 0, .35);
+    }
+
+    h1 {
+      font-family: "Rye", serif;
+      font-weight: 400;
+      font-size: clamp(2.5rem, 12.5vw, 4.25rem);
+      line-height: 1;
+      letter-spacing: .01em;
+      margin: 1.75rem 0 .5rem;
+      color: #fff4e6;
+      text-shadow: 0 3px 0 var(--cafe-hondo);
+    }
+
+    .lema {
+      margin: 0 auto 2rem;
+      max-width: 22rem;
+      color: #e9c9b4;
+    }
+
+    .descargar {
+      display: inline-block;
+      width: 100%;
+      padding: 1.1rem 1.5rem;
+      border-radius: 999px;
+      background: var(--mostaza);
+      color: var(--tinta);
+      font-weight: 800;
+      font-size: 1.25rem;
+      text-decoration: none;
+      box-shadow: 0 6px 0 #9c7000;
+      transition: transform .08s ease, box-shadow .08s ease;
+    }
+    .descargar:active { transform: translateY(4px); box-shadow: 0 2px 0 #9c7000; }
+    .descargar:focus-visible { outline: 3px solid #fff4e6; outline-offset: 4px; }
+
+    .version {
+      margin: 1rem 0 0;
+      font-size: .9375rem;
+      color: #d8b49c;
+      min-height: 1.5em;
+    }
+
+    /* ---------- Ticket de comanda ---------- */
+    .ticket {
+      --diente: 10px;
+      position: relative;
+      margin-top: 3.5rem;
+      padding: 2.25rem 1.5rem 2rem;
+      background: var(--ticket);
+      color: var(--tinta);
+      /* Borde dentado arriba y abajo, como un ticket cortado de la impresora. */
+      -webkit-mask:
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(var(--diente) * 2) var(--diente) repeat-x,
+        conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(var(--diente) * 2) var(--diente) repeat-x,
+        linear-gradient(#000 0 0) center / 100% calc(100% - var(--diente) * 2) no-repeat;
+      mask:
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(var(--diente) * 2) var(--diente) repeat-x,
+        conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(var(--diente) * 2) var(--diente) repeat-x,
+        linear-gradient(#000 0 0) center / 100% calc(100% - var(--diente) * 2) no-repeat;
+      transform: rotate(-.6deg);
+    }
+
+    .ticket h2 {
+      margin: 0 0 1.25rem;
+      font-size: 1.375rem;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    ol {
+      list-style: none;
+      counter-reset: paso;
+      margin: 0;
+      padding: 0;
+    }
+
+    ol li {
+      counter-increment: paso;
+      position: relative;
+      padding: 0 0 1.25rem 2.75rem;
+    }
+
+    ol li::before {
+      content: counter(paso);
+      position: absolute;
+      left: 0;
+      top: -.1rem;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--cafe);
+      color: #fff4e6;
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+    }
+
+    li strong { display: block; }
+
+    .aviso {
+      display: block;
+      margin-top: .5rem;
+      padding: .75rem .9rem;
+      border-left: 4px solid var(--ketchup);
+      background: #fbecea;
+      font-size: .9375rem;
+    }
+
+    .corte {
+      border: 0;
+      border-top: 2px dashed #d9cbbf;
+      margin: .5rem 0 1.75rem;
+    }
+
+    .ticket p { margin: 0 0 1rem; }
+    .ticket p:last-child { margin-bottom: 0; }
+
+    /* ---------- Pie ---------- */
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      font-size: .9375rem;
+      color: #d8b49c;
+    }
+
+    footer p { margin: 0 0 .5rem; }
+
+    a { color: inherit; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .descargar { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="portada">
+      <img src="logo.png" alt="Logo de Monchosos: una hamburguesa con sombrero vaquero" width="152" height="152">
+      <h1>Monchosos</h1>
+      <p class="lema">La app de la hamburguesería para tomar pedidos, cobrar y llevar el inventario.</p>
+
+      <!-- Jenkins sube a cada release una copia con nombre fijo (monchosos.apk): este enlace siempre baja la última. -->
+      <a class="descargar" id="descargar"
+         href="https://github.com/CiscoPaquitoTracer/Gestor_Hamburgueseria/releases/latest/download/monchosos.apk">Descargar para Android</a>
+      <p class="version" id="version" aria-live="polite">Buscando la versión más reciente</p>
+    </section>
+
+    <section class="ticket" aria-labelledby="titulo-instalar">
+      <h2 id="titulo-instalar">Cómo instalarla</h2>
+      <ol>
+        <li>
+          <strong>Descarga el archivo</strong>
+          Toca el botón de arriba desde el teléfono. Se baja un archivo que termina en <em>.apk</em>.
+        </li>
+        <li>
+          <strong>Ábrelo desde tus descargas</strong>
+          Si el teléfono pregunta, permite instalar apps desde tu navegador. Solo se pide la primera vez.
+        </li>
+        <li>
+          <strong>Pasa el aviso de Google</strong>
+          Como la app no viene de Play Store, Google no la conoce y muestra un aviso.
+          <span class="aviso">Si aparece “Se bloqueó la app para proteger tu dispositivo”, toca <b>Instalar de todas formas</b>, que está en letra pequeña arriba del botón “Entendido”.</span>
+        </li>
+        <li>
+          <strong>Entra con tu cuenta de Google</strong>
+          Usa el mismo correo de siempre. Tus pedidos e inventario están en la nube, así que aparecen tal como los dejaste.
+        </li>
+      </ol>
+
+      <hr class="corte">
+
+      <h2>Para actualizar</h2>
+      <p>Vuelve a esta página, descarga e instala encima. No hace falta desinstalar ni volver a iniciar sesión.</p>
+      <p>Si el teléfono dice que hay un conflicto con un paquete, es una versión de prueba vieja: desinstálala y vuelve a instalar.</p>
+    </section>
+
+    <footer>
+      <p>Solo pueden entrar los correos que el negocio autoriza.</p>
+      <p>Monchosos, Xochitepec, Morelos.</p>
+    </footer>
+  </main>
+
+  <script>
+    // Versión, fecha y enlace directo al APK del último release de GitHub.
+    (async () => {
+      const boton = document.getElementById('descargar');
+      const version = document.getElementById('version');
+      try {
+        const r = await fetch('https://api.github.com/repos/CiscoPaquitoTracer/Gestor_Hamburgueseria/releases/latest');
+        if (!r.ok) throw new Error(r.status);
+        const release = await r.json();
+        const apk = release.assets.find(a => a.name === 'monchosos.apk')
+          || release.assets.find(a => a.name.endsWith('.apk'));
+        if (apk) boton.href = apk.browser_download_url;
+        const fecha = new Date(release.published_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+        const mb = apk ? `, ${(apk.size / 1048576).toFixed(1)} MB` : '';
+        version.textContent = `Versión ${release.tag_name.replace(/^v/, '')}${mb}, publicada el ${fecha}`;
+      } catch {
+        version.textContent = 'El botón te lleva a la versión más reciente.';
+      }
+    })();
+  </script>
+</body>
+</html>

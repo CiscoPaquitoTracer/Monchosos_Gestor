@@ -1,0 +1,62 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<!--
+  Pipeline multirrama de Monchosos. Jenkins lo copia a jenkins_home la primera vez que arranca
+  (después se edita desde la interfaz). Un job por rama y por PR, cada uno con el Jenkinsfile del repo.
+
+  Solo descubre ramas y PRs del MISMO repo (incluidos los de Dependabot), nunca de forks: el repo es
+  público y un PR de un fork podría traer un Jenkinsfile que ejecute cualquier cosa en esta computadora.
+-->
+<org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject>
+  <description>CI/CD de Monchosos: Lint, pruebas y APK en cada rama y PR; release firmado en main.</description>
+  <orphanedItemStrategy class="com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy">
+    <pruneDeadBranches>true</pruneDeadBranches>
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>-1</numToKeep>
+    <abortBuilds>false</abortBuilds>
+  </orphanedItemStrategy>
+  <!-- Revisa GitHub cada 5 minutos: funciona sin webhook ni túnel (docs/CI_SETUP.md, paso 5). -->
+  <triggers>
+    <com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger>
+      <spec>H/5 * * * *</spec>
+      <interval>300000</interval>
+    </com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger>
+  </triggers>
+  <sources class="jenkins.branch.MultiBranchProject$BranchSourceList">
+    <data>
+      <jenkins.branch.BranchSource>
+        <source class="org.jenkinsci.plugins.github_branch_source.GitHubSCMSource">
+          <id>monchosos-github</id>
+          <apiUri>https://api.github.com</apiUri>
+          <credentialsId>github-token</credentialsId>
+          <repoOwner>CiscoPaquitoTracer</repoOwner>
+          <repository>Gestor_Hamburgueseria</repository>
+          <repositoryUrl>https://github.com/CiscoPaquitoTracer/Gestor_Hamburgueseria</repositoryUrl>
+          <traits>
+            <!-- 1 = ramas que no tienen PR abierto (las que sí, se prueban como PR). -->
+            <org.jenkinsci.plugins.github__branch__source.BranchDiscoveryTrait>
+              <strategyId>1</strategyId>
+            </org.jenkinsci.plugins.github__branch__source.BranchDiscoveryTrait>
+            <!-- 1 = el PR ya mezclado con su rama destino (lo que quedaría al aceptarlo). -->
+            <org.jenkinsci.plugins.github__branch__source.OriginPullRequestDiscoveryTrait>
+              <strategyId>1</strategyId>
+            </org.jenkinsci.plugins.github__branch__source.OriginPullRequestDiscoveryTrait>
+            <!-- Solo main (release) y los PRs. develop y francisco ya se prueban en su PR:
+                 compilarlos otra vez solo hacía fila con un único ejecutor. -->
+            <jenkins.scm.impl.trait.WildcardSCMHeadFilterTrait>
+              <includes>main PR-*</includes>
+              <excludes></excludes>
+            </jenkins.scm.impl.trait.WildcardSCMHeadFilterTrait>
+          </traits>
+        </source>
+        <strategy class="jenkins.branch.DefaultBranchPropertyStrategy">
+          <properties class="empty-list"/>
+        </strategy>
+      </jenkins.branch.BranchSource>
+    </data>
+    <owner class="org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject" reference="../.."/>
+  </sources>
+  <factory class="org.jenkinsci.plugins.workflow.multibranch.WorkflowBranchProjectFactory">
+    <owner class="org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject" reference="../.."/>
+    <scriptPath>Jenkinsfile</scriptPath>
+  </factory>
+</org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject>
