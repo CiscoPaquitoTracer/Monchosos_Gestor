@@ -46,7 +46,7 @@ npx supabase@2.118.0 link --project-ref <ref-del-proyecto>   # pide la contrase√
 npx supabase@2.118.0 db push                                   # aplica las migraciones pendientes
 ```
 
-CI (job "Base de datos") levanta Supabase en GitHub Actions, aplica las migraciones, pasa el linter y ejecuta las pruebas en cada PR.
+CI (etapa "Base de datos" del Jenkinsfile) levanta Supabase en Docker, aplica las migraciones, pasa el linter y ejecuta las pruebas en los PRs a main, en main y cuando cambia `supabase/`.
 
 ## Modelo de datos
 

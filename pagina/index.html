@@ -193,7 +193,7 @@
 
       <!-- Jenkins sube a cada release una copia con nombre fijo (monchosos.apk): este enlace siempre baja la última. -->
       <a class="descargar" id="descargar"
-         href="https://github.com/CiscoPaquitoTracer/Gestor_Hamburgueseria/releases/latest/download/monchosos.apk">Descargar para Android</a>
+         href="https://github.com/CiscoPaquitoTracer/Monchosos_Gestor/releases/latest/download/monchosos.apk">Descargar para Android</a>
       <p class="version" id="version" aria-live="polite">Buscando la versión más reciente</p>
     </section>
 
@@ -238,7 +238,7 @@
       const boton = document.getElementById('descargar');
       const version = document.getElementById('version');
       try {
-        const r = await fetch('https://api.github.com/repos/CiscoPaquitoTracer/Gestor_Hamburgueseria/releases/latest');
+        const r = await fetch('https://api.github.com/repos/CiscoPaquitoTracer/Monchosos_Gestor/releases/latest');
         if (!r.ok) throw new Error(r.status);
         const release = await r.json();
         const apk = release.assets.find(a => a.name === 'monchosos.apk')

@@ -1,13 +1,13 @@
 <?xml version='1.1' encoding='UTF-8'?>
 <!--
-  Pipeline multirrama de Monchosos. Jenkins lo copia a jenkins_home la primera vez que arranca
+  Pipeline multirrama de Monchosos (Flutter, repo Monchosos_Gestor). Jenkins lo copia a jenkins_home la primera vez que arranca
   (después se edita desde la interfaz). Un job por rama y por PR, cada uno con el Jenkinsfile del repo.
 
   Solo descubre ramas y PRs del MISMO repo (incluidos los de Dependabot), nunca de forks: el repo es
   público y un PR de un fork podría traer un Jenkinsfile que ejecute cualquier cosa en esta computadora.
 -->
 <org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject>
-  <description>CI/CD de Monchosos: Lint, pruebas y APK en cada rama y PR; release firmado en main.</description>
+  <description>CI/CD de Monchosos en Flutter: análisis, pruebas, base de datos, seguridad y APK en cada PR; release firmado y página en main.</description>
   <orphanedItemStrategy class="com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy">
     <pruneDeadBranches>true</pruneDeadBranches>
     <daysToKeep>-1</daysToKeep>
@@ -25,12 +25,12 @@
     <data>
       <jenkins.branch.BranchSource>
         <source class="org.jenkinsci.plugins.github_branch_source.GitHubSCMSource">
-          <id>monchosos-github</id>
+          <id>monchosos-flutter-github</id>
           <apiUri>https://api.github.com</apiUri>
           <credentialsId>github-token</credentialsId>
           <repoOwner>CiscoPaquitoTracer</repoOwner>
-          <repository>Gestor_Hamburgueseria</repository>
-          <repositoryUrl>https://github.com/CiscoPaquitoTracer/Gestor_Hamburgueseria</repositoryUrl>
+          <repository>Monchosos_Gestor</repository>
+          <repositoryUrl>https://github.com/CiscoPaquitoTracer/Monchosos_Gestor</repositoryUrl>
           <traits>
             <!-- 1 = ramas que no tienen PR abierto (las que sí, se prueban como PR). -->
             <org.jenkinsci.plugins.github__branch__source.BranchDiscoveryTrait>

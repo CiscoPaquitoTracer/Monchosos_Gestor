@@ -1,0 +1,45 @@
+# Dependabot solo abre PRs (semanales, a develop); los prueba Jenkins como a cualquier PR.
+# No hay GitHub Actions en este repo: todo el CI/CD corre en Jenkins (Jenkinsfile).
+version: 2
+updates:
+  # Paquetes de Dart / Flutter (pubspec.yaml)
+  - package-ecosystem: pub
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencias]
+    groups:
+      flutter:
+        patterns: ["*"]
+
+  # Gradle de Android (wrapper, AGP, Kotlin)
+  - package-ecosystem: gradle
+    directory: /android
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencias]
+    groups:
+      android:
+        patterns: ["*"]
+
+  # Imagen del agente de build
+  - package-ecosystem: docker
+    directory: /ci
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [ci]
+
+  # Imagen de Jenkins
+  - package-ecosystem: docker
+    directory: /infra/jenkins
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [ci]
