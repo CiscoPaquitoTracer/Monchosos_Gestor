@@ -1,0 +1,10 @@
+# Encabezados de Cloudflare Pages.
+# La PWA no tiene nombres de archivo con hash (main.dart.js, flutter_bootstrap.js): el navegador
+# debe preguntar siempre si hay versión nueva (respuesta 304 si no cambió), así cada
+# publicación de main llega al abrir la app.
+/app/*
+  Cache-Control: no-cache
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

@@ -1,8 +1,9 @@
 // CI/CD de Monchosos (Flutter) en Jenkins. Todo el CI/CD corre aquí: no hay GitHub Actions.
 //
-// En cada PR: análisis, pruebas, base de datos (si aplica), seguridad, APK debug y PWA.
-// En main:    además, el APK firmado, el release en GitHub, y la página de descarga y la PWA
-//             en GitHub Pages. iPad y Chromebook usan la PWA (sin App Store ni licencias).
+// En cada PR: análisis, pruebas, base de datos (si aplica), seguridad, APK debug, PWA y una
+//             URL de prueba en Cloudflare Pages.
+// En main:    además, el APK firmado, el release en GitHub y la página + PWA en producción
+//             (Cloudflare Pages). iPad y Chromebook usan la PWA (sin App Store ni licencias).
 // El resultado llega al PR como el check continuous-integration/jenkins/pr-merge.
 //
 // Guía: docs/CI_SETUP.md. Ojo: dentro de sh '''…''' NO se usan barras invertidas para
@@ -31,6 +32,8 @@ pipeline {
         BUILD_NAME = "2.0.${BUILD_NUMBER}"
         BUILD_NUMBER_APP = "${100 + (BUILD_NUMBER as int)}"
         GITLEAKS_IMAGEN = 'zricethezav/gitleaks:v8.30.1'
+        WRANGLER_SEND_METRICS = 'false'
+        CF_PROYECTO = 'monchosos'
     }
 
     options {
@@ -126,10 +129,10 @@ pipeline {
         }
 
         // PWA (iPad, Chromebook y cualquier navegador). Se compila en cada PR para que una versión
-        // web rota no pase; en main se publica en gh-pages/app/ (etapa Publicar web).
+        // web rota no pase; la etapa Desplegar web la sube a Cloudflare Pages.
         stage('Build Web') {
             steps {
-                sh 'flutter build web --release --base-href /Monchosos_Gestor/app/ --dart-define-from-file=env.json'
+                sh 'flutter build web --release --base-href /app/ --dart-define-from-file=env.json'
             }
         }
 
@@ -193,34 +196,26 @@ pipeline {
             }
         }
 
-        // GitHub Pages (rama gh-pages; Settings → Pages → Deploy from a branch), en cada build de main:
-        //   /      página de descarga (pagina/): APK de Android e instrucciones para instalar la PWA
-        //   /app/  la PWA, la versión principal para iPad y Chromebook
-        // gh-pages es la única rama con force-push (se reemplaza completa en cada publicación).
-        stage('Publicar web') {
-            when { branch 'main' }
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'github-token',
-                        usernameVariable: 'GH_USUARIO', passwordVariable: 'GH_TOKEN')]) {
-                    sh '''
-                        set -eu
-                        rm -rf .pagina-publicar
-                        cp -r pagina .pagina-publicar
-                        cp -r build/web .pagina-publicar/app
-                        cd .pagina-publicar
-                        touch .nojekyll
-                        git init -q -b gh-pages
-                        git -c user.name="Jenkins" -c user.email="jenkins@localhost" add -A
-                        git -c user.name="Jenkins" -c user.email="jenkins@localhost" commit -q -m "Página y PWA (build $BUILD_NUMBER)"
-                        git push -q --force "https://$GH_USUARIO:$GH_TOKEN@github.com/$REPO.git" HEAD:gh-pages
-                        echo "Página: https://ciscopaquitotracer.github.io/Monchosos_Gestor/"
-                        echo "PWA:    https://ciscopaquitotracer.github.io/Monchosos_Gestor/app/"
-                    '''
+        // Cloudflare Pages (cuenta propia, fuera de GitHub): página de descarga en / y PWA en /app/.
+        //   PR-N → URL de prueba https://pr-n.monchosos.pages.dev (para revisarla antes de fusionar)
+        //   main → producción   https://monchosos.pages.dev (o el dominio que se le asigne)
+        // Mientras no existan las credenciales de Cloudflare se omite y el build queda en verde.
+        stage('Desplegar web') {
+            when {
+                allOf {
+                    anyOf {
+                        branch 'main'
+                        changeRequest()
+                    }
+                    expression { hayCloudflare() }
                 }
             }
-            post {
-                always {
-                    sh 'rm -rf .pagina-publicar'
+            steps {
+                withCredentials([
+                    string(credentialsId: 'cloudflare-api-token', variable: 'CLOUDFLARE_API_TOKEN'),
+                    string(credentialsId: 'cloudflare-account-id', variable: 'CLOUDFLARE_ACCOUNT_ID'),
+                ]) {
+                    sh 'sh ci/desplegar_web.sh "$BRANCH_NAME"'
                 }
             }
         }
@@ -234,6 +229,17 @@ def hayLlaveDeRelease() {
         return true
     } catch (err) {
         echo 'Sin la credencial android-keystore: se omite el release (ver docs/CI_SETUP.md).'
+        return false
+    }
+}
+
+/** true si las credenciales de Cloudflare existen en Jenkins; si no, lo avisa en el log. */
+def hayCloudflare() {
+    try {
+        withCredentials([string(credentialsId: 'cloudflare-api-token', variable: 'CLOUDFLARE_API_TOKEN')]) { }
+        return true
+    } catch (err) {
+        echo 'Sin la credencial cloudflare-api-token: se omite Desplegar web (ver docs/CI_SETUP.md).'
         return false
     }
 }

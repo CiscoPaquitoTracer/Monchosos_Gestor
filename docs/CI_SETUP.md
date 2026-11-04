@@ -1,6 +1,6 @@
 # Configurar Jenkins (CI/CD)
 
-En este repo **todo el CI/CD corre en Jenkins**: no hay GitHub Actions. GitHub queda como repositorio, con PRs, reglas de ramas, auto-merge, Dependabot, Releases y Pages.
+En este repo **todo el CI/CD corre en Jenkins**: no hay GitHub Actions. GitHub queda como repositorio, con PRs, reglas de ramas, auto-merge, Dependabot y Releases (el APK). La página de descarga y la PWA viven en **Cloudflare Pages**, en una cuenta aparte del repo.
 
 Esta guía junta los pasos que hay que hacer **a mano** para que Jenkins pruebe cada PR (incluidos los de Dependabot) y genere el **release firmado** y la página de descarga en `main`.
 
@@ -26,9 +26,9 @@ GitHub ◄── Jenkins revisa cada 5 min ── Jenkins (infra/jenkins, Docker
 | Build Web | Siempre | `flutter build web` de la PWA (iPad, Chromebook, navegador) |
 | Build Release | `main` con la llave | APK y AAB firmados, versión `2.0.<build>` con build-number `100 + build` |
 | Publicar en GitHub | `main` con la llave | Release `v2.0.<build>` con `monchosos-2.0.<build>.apk` y `monchosos.apk` |
-| Publicar web | `main` | Sube a la rama `gh-pages` la página de descarga (`/`) y la PWA (`/app/`) |
+| Desplegar web | PRs y `main`, si existen las credenciales de Cloudflare | Sube a Cloudflare Pages la página (`/`) y la PWA (`/app/`). PR → URL de prueba `pr-N.monchosos.pages.dev`; `main` → producción `monchosos.pages.dev` |
 
-**iPad y Chromebook usan la PWA** (`https://ciscopaquitotracer.github.io/Monchosos_Gestor/app/`): no hace falta App Store, TestFlight, Mac ni licencias. No hay build nativo de iOS en el CI.
+**iPad y Chromebook usan la PWA** (`https://monchosos.pages.dev/app/`): no hace falta App Store, TestFlight, Mac ni licencias. No hay build nativo de iOS en el CI.
 
 El resultado llega al PR como el check **`continuous-integration/jenkins/pr-merge`**. Es el **único** check obligatorio.
 
@@ -78,6 +78,8 @@ En **Manage Jenkins → Credentials → System → Global credentials → Add Cr
 | `supabase-url` | Secret text | `https://<proyecto>.supabase.co` |
 | `supabase-publishable-key` | Secret text | Llave `sb_publishable_…`. **Nunca** la `service_role`/`secret` |
 | `github-token` | Username with password | Usuario de GitHub + token con **Contents: Read and write** en este repo |
+| `cloudflare-api-token` | Secret text | Token de Cloudflare con permiso **Cloudflare Pages: Edit** (ver paso 6) |
+| `cloudflare-account-id` | Secret text | *Account ID* de Cloudflare (ver paso 6) |
 
 - Si `github-token` es un token *fine-grained*, agrégale el repo `Monchosos_Gestor` en GitHub → Settings → Developer settings → Personal access tokens. Sin eso, Jenkins no ve el repo, no manda el check a los PRs y no puede crear releases.
 - Mientras no exista `android-keystore`, el build de `main` **omite** el release (lo avisa en el log) y queda en verde.
@@ -112,22 +114,34 @@ El job de Kotlin (`monchosos`) y este comparten el único ejecutor y hacen fila.
 Además:
 
 - **Settings → General → Pull Requests:** marca **Allow auto-merge**.
-- **Settings → Pages → Source:** **Deploy from a branch**, rama `gh-pages`, carpeta `/ (root)`. La rama la crea Jenkins en el primer build de `main`.
 
-## 6. Login de la PWA (una sola vez)
+## 6. Cloudflare Pages (página de descarga y PWA)
+
+La web vive en una cuenta de Cloudflare, no en el repo, para que el negocio pueda quedarse con ella aunque cambie de programador. Para probar se usa la cuenta de Francisco; después conviene una cuenta del negocio con Francisco como miembro.
+
+1. Crea la cuenta en https://dash.cloudflare.com (plan Free: permite uso comercial y no tiene límite de tráfico).
+2. **Account ID:** en el panel, **Workers & Pages** → columna derecha, *Account ID*. Guárdalo en Jenkins como `cloudflare-account-id`.
+3. **Token:** foto de perfil → **My Profile → API Tokens → Create Token → Create Custom Token**:
+   - Permissions: **Account → Cloudflare Pages → Edit**.
+   - Account Resources: **Include → tu cuenta**.
+   Guárdalo en Jenkins como `cloudflare-api-token` (se muestra una sola vez).
+4. No hay que crear el proyecto: el primer despliegue crea `monchosos` (si el nombre ya está ocupado en `pages.dev`, Cloudflare agrega un sufijo; revisa la URL en el log y en Supabase).
+5. **Dominio propio (cuando lo compren):** Cloudflare → Domain Registration (a precio de costo), y en el proyecto **Custom domains → Set up a domain**. El código no cambia; solo hay que agregar la URL nueva en Supabase (paso 7).
+
+## 7. Login de la PWA (una sola vez)
 
 En web el login no usa el SDK de Google: Supabase redirige a Google y regresa a la página. Hay que permitirlo:
 
 1. **Supabase → Authentication → URL Configuration → Redirect URLs:** agrega
-   `https://ciscopaquitotracer.github.io/Monchosos_Gestor/app/` y, para probar en la laptop, `http://localhost:8099/`.
+   - `https://monchosos.pages.dev/app/` (producción),
+   - `https://*.monchosos.pages.dev/**` (las URLs de prueba de cada PR),
+   - `http://localhost:8099/` (para probar en la laptop).
 2. **Supabase → Authentication → Providers → Google:** el *Client ID* (cliente web) ya está; para este flujo también necesita el **Client Secret** de ese mismo cliente web de Google Cloud.
 3. **Google Cloud → Clientes → el cliente "Aplicación web" → URIs de redireccionamiento autorizados:** debe estar `https://<ref-del-proyecto>.supabase.co/auth/v1/callback`.
 
 El APK de Android sigue usando el login nativo y no necesita nada de esto.
 
-Flujo: `francisco` → PR → `develop` → PR → `main`. `main` y `develop` solo cambian por PR.
-
-## 7. Solución de problemas
+## 8. Solución de problemas
 
 | Síntoma | Causa y solución |
 |---|---|
@@ -140,8 +154,9 @@ Flujo: `francisco` → PR → `develop` → PR → `main`. `main` y `develop` so
 | El PR se queda esperando el check | Jenkins apagado, `github-token` sin acceso al repo, o el nombre del check en la regla no coincide |
 | El release no inicia sesión con Google | Falta registrar el SHA-1 de la llave en Google Cloud |
 | El release no se conecta a Supabase | Faltan `supabase-url` o `supabase-publishable-key` |
-| En la PWA, Google dice `redirect_uri_mismatch` o regresa sin sesión | Falta el paso 6 (Redirect URLs en Supabase, Client Secret o el callback en Google Cloud) |
-| La PWA no muestra la versión nueva | GitHub Pages guarda caché unos minutos; cierra y vuelve a abrir la app |
+| En la PWA, Google dice `redirect_uri_mismatch` o regresa sin sesión | Falta el paso 7 (Redirect URLs en Supabase, Client Secret o el callback en Google Cloud) |
+| Desplegar web: `Authentication error` | El token no tiene **Cloudflare Pages: Edit** o `cloudflare-account-id` no es de esa cuenta |
+| La PWA no muestra la versión nueva | Cierra la app por completo y vuelve a abrirla (`pagina/_headers` hace que siempre pregunte por la versión nueva) |
 
 ## Mantenimiento
 

@@ -19,6 +19,9 @@ ARG CMDLINE_TOOLS_SHA1=e025545c62a8e64c7559119566a569fb1dec5f60
 ARG SUPABASE_CLI_VERSION=2.118.0
 ARG OSV_SCANNER_VERSION=2.7.0
 ARG MOBSFSCAN_VERSION=1.1.0
+# Node LTS + Wrangler (CLI de Cloudflare) para desplegar la página y la PWA en Cloudflare Pages.
+ARG NODE_VERSION=24.22.2
+ARG WRANGLER_VERSION=4.157.0
 
 # Jenkins corre el contenedor con un usuario no root: todo lo que se escribe queda con permisos abiertos.
 ENV ANDROID_HOME=/opt/android-sdk \
@@ -75,3 +78,12 @@ RUN curl -fsSL -o /usr/local/bin/osv-scanner \
         "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
     && chmod +x /usr/local/bin/osv-scanner \
     && pip3 install --no-cache-dir "mobsfscan==${MOBSFSCAN_VERSION}"
+
+# Node + Wrangler (etapa "Desplegar web"). El tarball se verifica contra SHASUMS256.txt oficial.
+RUN cd /tmp \
+    && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" | grep " node-v${NODE_VERSION}-linux-x64.tar.xz$" | sha256sum -c - \
+    && tar -xJf "node-v${NODE_VERSION}-linux-x64.tar.xz" -C /usr/local --strip-components=1 \
+    && rm "node-v${NODE_VERSION}-linux-x64.tar.xz" \
+    && npm install -g --no-fund --no-audit "wrangler@${WRANGLER_VERSION}" \
+    && wrangler --version
