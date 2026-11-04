@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Café del fondo del logo (esquinas de la imagen original). -->
+    <color name="ic_launcher_fondo">#571401</color>
+</resources>
