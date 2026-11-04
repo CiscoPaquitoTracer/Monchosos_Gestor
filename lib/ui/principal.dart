@@ -62,6 +62,21 @@ class _AppPrincipalState extends ConsumerState<AppPrincipal> {
     final seccion = ref.watch(seccionProvider);
     // Precios y disponibilidad en toda la app (cada 2 min).
     ref.watch(menuProvider);
+    void ir(int i) => ref.read(seccionProvider.notifier).ir(Seccion.values[i]);
+    // iPad horizontal, Chromebook o laptop: barra lateral en lugar de la inferior.
+    final ancha = MediaQuery.sizeOf(context).width >= anchoBarraLateral;
+    final contenido = ConFranjaError(
+      child: IndexedStack(
+        index: seccion.index,
+        children: const [
+          PantallaInicio(),
+          PantallaPedidos(),
+          PantallaResumen(),
+          PantallaInventario(),
+          PantallaMenu(),
+        ],
+      ),
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text(seccion.titulo),
@@ -70,32 +85,44 @@ class _AppPrincipalState extends ConsumerState<AppPrincipal> {
           const SizedBox(width: 8),
         ],
       ),
-      body: ConFranjaError(
-        child: IndexedStack(
-          index: seccion.index,
-          children: const [
-            PantallaInicio(),
-            PantallaPedidos(),
-            PantallaResumen(),
-            PantallaInventario(),
-            PantallaMenu(),
-          ],
-        ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: seccion.index,
-        onDestinationSelected: (i) =>
-            ref.read(seccionProvider.notifier).ir(Seccion.values[i]),
-        destinations: [
-          for (final s in Seccion.values)
-            NavigationDestination(
-              icon: Icon(s.icono),
-              selectedIcon: Icon(s.iconoActivo),
-              label: s.titulo,
-              tooltip: s.titulo,
+      body: ancha
+          ? Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: seccion.index,
+                  onDestinationSelected: ir,
+                  labelType: NavigationRailLabelType.none,
+                  backgroundColor: context.colores.surfaceContainer,
+                  indicatorColor: context.colores.secondaryContainer,
+                  destinations: [
+                    for (final s in Seccion.values)
+                      NavigationRailDestination(
+                        icon: Tooltip(message: s.titulo, child: Icon(s.icono)),
+                        selectedIcon: Icon(s.iconoActivo),
+                        label: Text(s.titulo),
+                      ),
+                  ],
+                ),
+                VerticalDivider(width: 1, color: context.colores.outline),
+                Expanded(child: contenido),
+              ],
+            )
+          : contenido,
+      bottomNavigationBar: ancha
+          ? null
+          : NavigationBar(
+              selectedIndex: seccion.index,
+              onDestinationSelected: ir,
+              destinations: [
+                for (final s in Seccion.values)
+                  NavigationDestination(
+                    icon: Icon(s.icono),
+                    selectedIcon: Icon(s.iconoActivo),
+                    label: s.titulo,
+                    tooltip: s.titulo,
+                  ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }

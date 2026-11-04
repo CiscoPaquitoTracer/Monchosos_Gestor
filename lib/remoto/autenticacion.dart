@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -36,8 +36,11 @@ typedef ResultadoLogin = String?;
 
 /// Botón "Iniciar sesión con Google" → Supabase Auth.
 ///
-/// Google entrega un ID token; Supabase lo verifica en el servidor y abre la sesión.
-/// El acceso real lo decide la tabla usuarios_permitidos (RLS).
+/// - **Web (PWA para iPad y Chromebook):** Supabase redirige a Google y regresa a la página con
+///   la sesión abierta (signInWithOAuth). No necesita SDK de Google ni licencias.
+/// - **Android / iOS nativos:** Google entrega un ID token y Supabase lo verifica en el servidor.
+///
+/// El acceso real lo decide la tabla usuarios_permitidos (RLS); ver [verificarAcceso].
 ///
 /// Nonce (solo Android): Google firma el SHA-256 del nonce dentro del token y Supabase
 /// comprueba que corresponde al valor original, así un token interceptado no sirve.
@@ -53,7 +56,7 @@ class Autenticacion {
   static final Random _aleatorio = Random.secure();
 
   Future<void> _inicializar() => _inicializado ??= () async {
-    final android = Platform.isAndroid;
+    final android = defaultTargetPlatform == TargetPlatform.android;
     _nonce = android ? _nonceAleatorio() : null;
     await GoogleSignIn.instance.initialize(
       clientId: android || Config.googleIosClientId.isEmpty
@@ -66,6 +69,7 @@ class Autenticacion {
 
   Future<ResultadoLogin> iniciarSesion() async {
     if (!Config.completa) return Config.mensajeFalta;
+    if (kIsWeb) return _iniciarEnWeb();
     final String idToken;
     try {
       await _inicializar();
@@ -92,23 +96,50 @@ class Autenticacion {
         idToken: idToken,
         nonce: _nonce,
       );
-      // RLS solo deja ver tu propio renglón: si no hay, la cuenta no está autorizada.
-      final filas = await _db.from('usuarios_permitidos').select('correo');
-      if (filas.isNotEmpty) return null;
-      final correo = _db.auth.currentUser?.email ?? '';
-      await cerrarSesion();
-      return 'La cuenta $correo no tiene acceso. Pide que la agreguen en Supabase '
-          '(usuarios_permitidos).';
+      return await verificarAcceso();
     } catch (e) {
       await cerrarSesion();
       return mensajeDeError(e);
     }
   }
 
+  /// Web: la página se va a Google y regresa a esta misma dirección con la sesión.
+  /// La dirección tiene que estar en Supabase → Authentication → URL Configuration.
+  Future<ResultadoLogin> _iniciarEnWeb() async {
+    try {
+      await _db.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: '${Uri.base.origin}${Uri.base.path}',
+        queryParams: const {'prompt': 'select_account'},
+      );
+      return null;
+    } catch (e) {
+      return mensajeDeError(e);
+    }
+  }
+
+  /// Revisa que la cuenta con sesión esté en usuarios_permitidos. Si no, cierra la sesión y
+  /// regresa el mensaje para mostrar. Si no hay red, deja pasar (RLS sigue protegiendo los datos).
+  Future<ResultadoLogin> verificarAcceso() async {
+    final List<dynamic> filas;
+    try {
+      // RLS solo deja ver tu propio renglón: si no hay, la cuenta no está autorizada.
+      filas = await _db.from('usuarios_permitidos').select('correo');
+    } catch (_) {
+      return null;
+    }
+    if (filas.isNotEmpty) return null;
+    final correo = _db.auth.currentUser?.email ?? '';
+    await cerrarSesion();
+    return 'La cuenta $correo no tiene acceso. Pide que la agreguen en Supabase '
+        '(usuarios_permitidos).';
+  }
+
   Future<void> cerrarSesion() async {
     try {
       await _db.auth.signOut();
     } catch (_) {}
+    if (kIsWeb) return;
     try {
       await _inicializar();
       await GoogleSignIn.instance.signOut();

@@ -30,23 +30,30 @@ class PantallaLogin extends ConsumerStatefulWidget {
 
 class _PantallaLoginState extends ConsumerState<PantallaLogin> {
   bool _entrando = false;
-  String? _error;
+  String? _errorLogin;
 
   Future<void> _entrar() async {
+    ref.read(errorAccesoProvider.notifier).poner(null);
     setState(() {
       _entrando = true;
-      _error = null;
+      _errorLogin = null;
     });
+    // En la PWA la página se va a Google y regresa ya con la sesión.
     final error = await ref.read(autenticacionProvider).iniciarSesion();
     if (!mounted) return;
     setState(() {
       _entrando = false;
-      _error = error;
+      _errorLogin = error;
     });
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final error = _errorLogin ?? ref.watch(errorAccesoProvider);
+    return _contenido(context, error);
+  }
+
+  Widget _contenido(BuildContext context, String? error) => Scaffold(
     body: SafeArea(
       child: Center(
         child: SingleChildScrollView(
@@ -83,7 +90,7 @@ class _PantallaLoginState extends ConsumerState<PantallaLogin> {
                     label: const Text('Iniciar sesión con Google'),
                   ),
                 ),
-                if (_error != null) ...[
+                if (error != null) ...[
                   const SizedBox(height: 20),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +99,7 @@ class _PantallaLoginState extends ConsumerState<PantallaLogin> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _error!,
+                          error,
                           style: TextStyle(color: context.alerta),
                         ),
                       ),

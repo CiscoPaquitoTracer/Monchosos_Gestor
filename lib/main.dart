@@ -58,7 +58,13 @@ class _SegunSesion extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sesion = ref.watch(sesionProvider);
     return switch (sesion) {
-      AsyncData(value: final u?) => AppPrincipal(usuario: u),
+      AsyncData(value: final u?) => switch (ref.watch(
+        accesoProvider(u.correo),
+      )) {
+        // Sin acceso: ya cerró la sesión; en un momento la sesión cambia y aparece el login.
+        AsyncData(value: true) => AppPrincipal(usuario: u),
+        _ => const Scaffold(body: Cargando()),
+      },
       AsyncData() || AsyncError() => const PantallaLogin(),
       _ => const Scaffold(body: Cargando()),
     };

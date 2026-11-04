@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:http/http.dart' show ClientException;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,7 +12,11 @@ const mensajeSinPermiso = 'Tu cuenta no tiene permiso para hacer esto.';
 /// Mensaje entendible para mostrar en pantalla.
 String mensajeDeError(Object e) {
   if (e is ErrorValidacion) return e.mensaje;
-  if (e is SocketException || e is ClientException || e is TimeoutException) {
+  // Sin red: http convierte los errores de socket en ClientException (también en web).
+  // No se usa dart:io para que compile en la PWA.
+  if (e is ClientException ||
+      e is TimeoutException ||
+      e.runtimeType.toString() == 'SocketException') {
     return mensajeSinRed;
   }
   if (e is AuthRetryableFetchException) return mensajeSinRed;

@@ -50,6 +50,30 @@ final sesionProvider = StreamProvider<Usuario?>((ref) async* {
   }
 });
 
+/// Mensaje "la cuenta X no tiene acceso" para mostrarlo en la pantalla de login.
+class ErrorAccesoNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void poner(String? mensaje) => state = mensaje;
+}
+
+final errorAccesoProvider = NotifierProvider<ErrorAccesoNotifier, String?>(
+  ErrorAccesoNotifier.new,
+);
+
+/// Revisa usuarios_permitidos una vez por cuenta con sesión, venga del login nativo, del
+/// regreso de Google en la PWA o de una sesión guardada. false = sin acceso (ya cerró sesión).
+final accesoProvider = FutureProvider.autoDispose.family<bool, String>((
+  ref,
+  correo,
+) async {
+  final error = await ref.read(autenticacionProvider).verificarAcceso();
+  if (error == null) return true;
+  ref.read(errorAccesoProvider.notifier).poner(error);
+  return false;
+});
+
 // ---------------------------------------------------------------- Avisos de error
 
 /// La franja roja de arriba (§2.8). [reintentar] repite lo que falló.

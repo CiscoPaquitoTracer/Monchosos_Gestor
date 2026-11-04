@@ -1,5 +1,4 @@
-import 'dart:io' show Platform;
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -15,8 +14,8 @@ import '../remoto/repositorios.dart';
 /// Una vez al día (10:00) revisa si se acerca un fin de semana o festivo y, si se suele vender
 /// más o no alcanzan los insumos, manda una notificación con lo que conviene comprar.
 ///
-/// Solo Android (workmanager). En iOS no hay tareas periódicas a hora fija: la estrategia
-/// (BGAppRefreshTask o aviso desde el servidor) está pendiente de decidir (§9).
+/// Solo Android nativo (workmanager). En iOS y en la PWA no hay tareas periódicas a hora fija:
+/// la alternativa es mandar el aviso desde el servidor (Edge Function + push), pendiente (§9).
 abstract final class AvisoReabasto {
   static const _trabajo = 'aviso-reabasto';
   static const _ultimoAviso = 'ultimo_aviso_reabasto';
@@ -26,9 +25,14 @@ abstract final class AvisoReabasto {
 
   static final _notificaciones = FlutterLocalNotificationsPlugin();
 
+  /// Solo en la app nativa de Android. En la PWA (web) no hay tareas programadas en el
+  /// dispositivo: el aviso tendría que mandarse desde el servidor (pendiente, §9).
+  static bool get _android =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   /// Programa la revisión diaria. KEEP: no se reinicia el reloj cada vez que abre la app.
   static Future<void> programar() async {
-    if (!Platform.isAndroid) return;
+    if (!_android) return;
     await Workmanager().initialize(despacharAvisoReabasto);
     await Workmanager().registerPeriodicTask(
       _trabajo,
@@ -42,7 +46,7 @@ abstract final class AvisoReabasto {
 
   /// Pide el permiso de notificaciones (Android 13+), una vez al entrar.
   static Future<void> pedirPermiso() async {
-    if (!Platform.isAndroid) return;
+    if (!_android) return;
     await _inicializarNotificaciones();
     await _notificaciones
         .resolvePlatformSpecificImplementation<

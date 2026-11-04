@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Monchosos para Android</title>
-  <meta name="description" content="Descarga la app de Monchosos para tomar pedidos, cobrar y llevar el inventario.">
+  <title>Monchosos: instala la app</title>
+  <meta name="description" content="Instala la app de Monchosos en iPad, Chromebook, computadora o Android para tomar pedidos, cobrar y llevar el inventario.">
   <meta name="theme-color" content="#571401">
   <link rel="icon" href="logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -84,6 +84,29 @@
     }
     .descargar:active { transform: translateY(4px); box-shadow: 0 2px 0 #9c7000; }
     .descargar:focus-visible { outline: 3px solid #fff4e6; outline-offset: 4px; }
+
+    .descargar + .secundario { margin-top: 1rem; }
+    .secundario {
+      display: inline-block;
+      width: 100%;
+      padding: .9rem 1.5rem;
+      border-radius: 999px;
+      border: 2px solid var(--mostaza);
+      color: #fff4e6;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .secundario:focus-visible { outline: 3px solid #fff4e6; outline-offset: 4px; }
+    .nota { margin: .75rem 0 0; font-size: .9375rem; color: #d8b49c; }
+
+    .ticket h3 {
+      margin: 1.75rem 0 1rem;
+      font-size: 1.0625rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--cafe);
+    }
 
     .version {
       margin: 1rem 0 0;
@@ -191,18 +214,59 @@
       <h1>Monchosos</h1>
       <p class="lema">La app de la hamburguesería para tomar pedidos, cobrar y llevar el inventario.</p>
 
+      <!-- La PWA (app/) es la versión principal: funciona en iPad, Chromebook, computadora y teléfono. -->
+      <a class="descargar" href="app/">Abrir la app</a>
+      <p class="nota">Para iPad, Chromebook, computadora o cualquier teléfono. Se agrega a la pantalla de inicio como una app.</p>
+
       <!-- Jenkins sube a cada release una copia con nombre fijo (monchosos.apk): este enlace siempre baja la última. -->
-      <a class="descargar" id="descargar"
-         href="https://github.com/CiscoPaquitoTracer/Monchosos_Gestor/releases/latest/download/monchosos.apk">Descargar para Android</a>
+      <a class="secundario" id="descargar"
+         href="https://github.com/CiscoPaquitoTracer/Monchosos_Gestor/releases/latest/download/monchosos.apk">Descargar para Android (APK)</a>
       <p class="version" id="version" aria-live="polite">Buscando la versión más reciente</p>
     </section>
 
     <section class="ticket" aria-labelledby="titulo-instalar">
       <h2 id="titulo-instalar">Cómo instalarla</h2>
+
+      <h3>En iPad o iPhone</h3>
+      <ol>
+        <li>
+          <strong>Abre la app en Safari</strong>
+          Toca “Abrir la app” desde Safari (no desde Chrome ni desde otra app).
+        </li>
+        <li>
+          <strong>Agrégala a la pantalla de inicio</strong>
+          Toca el botón de compartir (el cuadro con la flecha hacia arriba) y elige <b>Agregar a inicio</b>.
+        </li>
+        <li>
+          <strong>Ábrela desde su ícono</strong>
+          Aparece la hamburguesa de Monchosos junto a tus apps y se abre a pantalla completa.
+        </li>
+      </ol>
+
+      <h3>En Chromebook, computadora o Android</h3>
+      <ol>
+        <li>
+          <strong>Abre la app en Chrome</strong>
+          Toca “Abrir la app”.
+        </li>
+        <li>
+          <strong>Instálala</strong>
+          Toca el ícono de instalar en la barra de direcciones, o el menú de tres puntos y <b>Instalar app</b> (en algunos teléfonos dice “Agregar a la pantalla principal”).
+        </li>
+      </ol>
+
+      <h3>Entrar</h3>
+      <p>Usa tu cuenta de Google de siempre. Tus pedidos e inventario están en la nube, así que aparecen tal como los dejaste, en cualquier dispositivo.</p>
+      <p>La app se actualiza sola: cada vez que la abres tienes la versión más reciente.</p>
+
+      <hr class="corte">
+
+      <h2>App de Android (APK)</h2>
+      <p>Es la opción para teléfonos Android que además manda el aviso diario de qué comprar.</p>
       <ol>
         <li>
           <strong>Descarga el archivo</strong>
-          Toca el botón de arriba desde el teléfono. Se baja un archivo que termina en <em>.apk</em>.
+          Toca “Descargar para Android (APK)” desde el teléfono. Se baja un archivo que termina en <em>.apk</em>.
         </li>
         <li>
           <strong>Ábrelo desde tus descargas</strong>
@@ -213,17 +277,8 @@
           Como la app no viene de Play Store, Google no la conoce y muestra un aviso.
           <span class="aviso">Si aparece “Se bloqueó la app para proteger tu dispositivo”, toca <b>Instalar de todas formas</b>, que está en letra pequeña arriba del botón “Entendido”.</span>
         </li>
-        <li>
-          <strong>Entra con tu cuenta de Google</strong>
-          Usa el mismo correo de siempre. Tus pedidos e inventario están en la nube, así que aparecen tal como los dejaste.
-        </li>
       </ol>
-
-      <hr class="corte">
-
-      <h2>Para actualizar</h2>
-      <p>Vuelve a esta página, descarga e instala encima. No hace falta desinstalar ni volver a iniciar sesión.</p>
-      <p>Si el teléfono dice que hay un conflicto con un paquete, es una versión de prueba vieja: desinstálala y vuelve a instalar.</p>
+      <p><b>Para actualizar:</b> vuelve a esta página, descarga e instala encima. No hace falta desinstalar ni volver a iniciar sesión.</p>
     </section>
 
     <footer>

@@ -5,7 +5,10 @@ import '../../estado/proveedores.dart';
 import '../tema.dart';
 
 /// Ancho máximo del contenido: en tableta no se estira a toda la pantalla.
-const double anchoMaximo = 720;
+const double anchoMaximo = 760;
+
+/// Desde este ancho (iPad horizontal, Chromebook) la navegación va en una barra lateral.
+const double anchoBarraLateral = 840;
 
 /// Centra el contenido y limita su ancho (teléfono y tableta).
 class Centrado extends StatelessWidget {

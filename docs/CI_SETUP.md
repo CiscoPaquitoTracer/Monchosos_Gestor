@@ -23,10 +23,12 @@ GitHub ◄── Jenkins revisa cada 5 min ── Jenkins (infra/jenkins, Docker
 | Base de datos | `main`, PRs a `main` y cuando cambia `supabase/` | `supabase db start`, `supabase db lint` y `supabase/tests/pruebas.sql` |
 | Seguridad | Siempre | Gitleaks (secretos), mobsfscan (Android) y osv-scanner (`pubspec.lock`) |
 | Build Debug | Siempre | `flutter build apk --debug` (se archiva el APK) |
+| Build Web | Siempre | `flutter build web` de la PWA (iPad, Chromebook, navegador) |
 | Build Release | `main` con la llave | APK y AAB firmados, versión `2.0.<build>` con build-number `100 + build` |
 | Publicar en GitHub | `main` con la llave | Release `v2.0.<build>` con `monchosos-2.0.<build>.apk` y `monchosos.apk` |
-| Página | `main`, si cambió `pagina/` o si `gh-pages` no existe | Sube `pagina/` a la rama `gh-pages` |
-| iOS | `main`, si `IOS_HABILITADO=true` | Necesita un agente Mac con la etiqueta `macos` (pendiente) |
+| Publicar web | `main` | Sube a la rama `gh-pages` la página de descarga (`/`) y la PWA (`/app/`) |
+
+**iPad y Chromebook usan la PWA** (`https://ciscopaquitotracer.github.io/Monchosos_Gestor/app/`): no hace falta App Store, TestFlight, Mac ni licencias. No hay build nativo de iOS en el CI.
 
 El resultado llega al PR como el check **`continuous-integration/jenkins/pr-merge`**. Es el **único** check obligatorio.
 
@@ -112,9 +114,20 @@ Además:
 - **Settings → General → Pull Requests:** marca **Allow auto-merge**.
 - **Settings → Pages → Source:** **Deploy from a branch**, rama `gh-pages`, carpeta `/ (root)`. La rama la crea Jenkins en el primer build de `main`.
 
+## 6. Login de la PWA (una sola vez)
+
+En web el login no usa el SDK de Google: Supabase redirige a Google y regresa a la página. Hay que permitirlo:
+
+1. **Supabase → Authentication → URL Configuration → Redirect URLs:** agrega
+   `https://ciscopaquitotracer.github.io/Monchosos_Gestor/app/` y, para probar en la laptop, `http://localhost:8099/`.
+2. **Supabase → Authentication → Providers → Google:** el *Client ID* (cliente web) ya está; para este flujo también necesita el **Client Secret** de ese mismo cliente web de Google Cloud.
+3. **Google Cloud → Clientes → el cliente "Aplicación web" → URIs de redireccionamiento autorizados:** debe estar `https://<ref-del-proyecto>.supabase.co/auth/v1/callback`.
+
+El APK de Android sigue usando el login nativo y no necesita nada de esto.
+
 Flujo: `francisco` → PR → `develop` → PR → `main`. `main` y `develop` solo cambian por PR.
 
-## 6. Solución de problemas
+## 7. Solución de problemas
 
 | Síntoma | Causa y solución |
 |---|---|
@@ -127,9 +140,12 @@ Flujo: `francisco` → PR → `develop` → PR → `main`. `main` y `develop` so
 | El PR se queda esperando el check | Jenkins apagado, `github-token` sin acceso al repo, o el nombre del check en la regla no coincide |
 | El release no inicia sesión con Google | Falta registrar el SHA-1 de la llave en Google Cloud |
 | El release no se conecta a Supabase | Faltan `supabase-url` o `supabase-publishable-key` |
+| En la PWA, Google dice `redirect_uri_mismatch` o regresa sin sesión | Falta el paso 6 (Redirect URLs en Supabase, Client Secret o el callback en Google Cloud) |
+| La PWA no muestra la versión nueva | GitHub Pages guarda caché unos minutos; cierra y vuelve a abrir la app |
 
 ## Mantenimiento
 
 - Si cambias `jobs/monchosos-flutter/config.xml`, Jenkins **no** lo toma solo: cópialo a mano como en el paso 4.
+- La etapa **Base de datos** no usa `supabase db start` (dentro del contenedor busca la base en 127.0.0.1): `ci/base_de_datos.sh` levanta la imagen `supabase/postgres` en una red propia, aplica `ci/auth_supabase.sql` y las migraciones, y corre el linter y las pruebas.
 - **Dependabot** abre PRs semanales a `develop` (paquetes `pub`, Gradle de `android/` y las imágenes de `ci/` e `infra/jenkins/`). Solo actualiza el `FROM`; los `ARG` del Dockerfile (Flutter, SDK, NDK, herramientas) se cambian a mano.
 - Para actualizar Jenkins: acepta el PR de Dependabot y ejecuta `docker compose up -d --build` en `infra/jenkins`. Los datos están en el volumen `jenkins_home`.
