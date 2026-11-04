@@ -29,8 +29,6 @@ pipeline {
         // versionCode 8), para que se instale encima como actualización.
         BUILD_NAME = "2.0.${BUILD_NUMBER}"
         BUILD_NUMBER_APP = "${100 + (BUILD_NUMBER as int)}"
-        // Base de datos de Supabase local: desde este contenedor el host es host.docker.internal.
-        DB_URL = 'postgresql://postgres:postgres@host.docker.internal:54322/postgres'
         GITLEAKS_IMAGEN = 'zricethezav/gitleaks:v8.30.1'
     }
 
@@ -80,8 +78,8 @@ pipeline {
             }
         }
 
-        // Migraciones, linter de la BD y supabase/tests/pruebas.sql. Usa bastante memoria y tarda:
-        // corre en main, en los PRs a main y cuando cambia supabase/.
+        // Migraciones, linter de la BD y supabase/tests/pruebas.sql en un Postgres de Supabase
+        // desechable (ci/base_de_datos.sh). Corre en main, en los PRs a main y cuando cambia supabase/.
         stage('Base de datos') {
             when {
                 anyOf {
@@ -91,16 +89,11 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    set -eu
-                    supabase db start
-                    supabase db lint --db-url "$DB_URL" --level warning --fail-on warning
-                    psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f supabase/tests/pruebas.sql
-                '''
+                sh 'sh ci/base_de_datos.sh probar'
             }
             post {
                 always {
-                    sh 'supabase db stop --no-backup || true'
+                    sh 'sh ci/base_de_datos.sh limpiar'
                 }
             }
         }
@@ -111,7 +104,7 @@ pipeline {
                 // el mismo workspace que este (el workspace no existe como carpeta del host).
                 sh 'docker run --rm --volumes-from "$(hostname)" -w "$WORKSPACE" "$GITLEAKS_IMAGEN" detect --source "$WORKSPACE" --no-banner --redact'
                 // Configuración insegura en el código Android (manifiesto, red, etc.).
-                sh 'mobsfscan android/'
+                sh 'mobsfscan --config .mobsf android/'
                 // Dependencias de Dart con vulnerabilidades conocidas.
                 sh 'osv-scanner scan source --lockfile=pubspec.lock'
             }
