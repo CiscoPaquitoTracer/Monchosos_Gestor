@@ -55,6 +55,13 @@ pipeline {
                         printf '{"SUPABASE_URL": "%s", "SUPABASE_PUBLISHABLE_KEY": "%s", "GOOGLE_WEB_CLIENT_ID": "%s", "GOOGLE_IOS_CLIENT_ID": ""}' "$SUPABASE_URL" "$SUPABASE_PUBLISHABLE_KEY" "$GOOGLE_WEB_CLIENT_ID" > env.json
                     '''
                 }
+                // Memoria de Gradle en CI. La plantilla de Flutter (android/gradle.properties) pide
+                // -Xmx8G + 4G de metaspace: en Docker Desktop (~5 GB) eso tumba la máquina virtual
+                // entera, y con ella a Jenkins. El gradle.properties de GRADLE_USER_HOME tiene prioridad.
+                sh '''
+                    set -eu
+                    printf '%s\\n' 'org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=768m -XX:ReservedCodeCacheSize=256m' 'org.gradle.workers.max=2' 'org.gradle.parallel=false' 'kotlin.compiler.execution.strategy=in-process' > "$GRADLE_USER_HOME/gradle.properties"
+                '''
                 sh 'flutter --version'
             }
         }
