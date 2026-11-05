@@ -1,0 +1,6 @@
+# Copia este archivo como android/key.properties (está en .gitignore) y llena las contraseñas.
+# La contraseña solo la tiene Francisco; nunca se escribe en archivos versionados.
+storeFile=C:/Users/fcere/Llaves/monchosos-release.jks
+storePassword=
+keyAlias=monchosos
+keyPassword=

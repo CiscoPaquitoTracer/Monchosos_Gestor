@@ -1,0 +1,25 @@
+# Jenkins para el CI de Monchosos.
+#   cp .env.example .env   (y rellena DOCKER_GID)
+#   docker compose up -d --build
+# Ver docs/CI_SETUP.md
+name: monchosos-jenkins
+
+services:
+  jenkins:
+    build: .
+    restart: unless-stopped
+    # Solo accesible desde esta computadora. Para el webhook de GitHub usa un túnel (ngrok),
+    # nunca abras el puerto al router: Jenkins controla Docker (equivale a ser administrador).
+    ports:
+      # JENKINS_PORT en .env (por defecto 8080) por si otro programa ya usa ese puerto (ej. XAMPP).
+      # No se publica el 50000 (agentes externos): los builds corren en contenedores de este mismo Docker.
+      - "127.0.0.1:${JENKINS_PORT:-8080}:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Grupo dueño del socket de Docker, para que el usuario jenkins pueda usarlo.
+    group_add:
+      - "${DOCKER_GID}"
+
+volumes:
+  jenkins_home:

@@ -1,0 +1,3 @@
+# El contexto de ci/ solo necesita el Dockerfile.
+*
+!Dockerfile

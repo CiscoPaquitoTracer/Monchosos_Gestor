@@ -1,12 +1,15 @@
 {
-    "name": "monchosos_gestor",
-    "short_name": "monchosos_gestor",
-    "start_url": ".",
+    "name": "Monchosos",
+    "short_name": "Monchosos",
+    "description": "Gestor de la hamburguesería Monchosos: pedidos, inventario y ventas.",
+    "lang": "es-MX",
+    "id": "./",
+    "start_url": "./",
+    "scope": "./",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Gestor Monchosos en Flutter (Android e iOS)",
-    "orientation": "portrait-primary",
+    "orientation": "any",
+    "background_color": "#571401",
+    "theme_color": "#571401",
     "prefer_related_applications": false,
     "icons": [
         {

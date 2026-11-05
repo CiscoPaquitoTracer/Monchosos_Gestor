@@ -1,0 +1,166 @@
+# Configurar Jenkins (CI/CD)
+
+En este repo **todo el CI/CD corre en Jenkins**: no hay GitHub Actions. GitHub queda como repositorio, con PRs, reglas de ramas, auto-merge, Dependabot y Releases (el APK). La página de descarga y la PWA viven en **Cloudflare Pages**, en una cuenta aparte del repo.
+
+Esta guía junta los pasos que hay que hacer **a mano** para que Jenkins pruebe cada PR (incluidos los de Dependabot) y genere el **release firmado** y la página de descarga en `main`.
+
+## Cómo está armado
+
+```
+GitHub ◄── Jenkins revisa cada 5 min ── Jenkins (infra/jenkins, Docker Compose, http://localhost:8081)
+                                           │ usa el Docker de la computadora (docker.sock)
+                                           ▼
+                                        Contenedor de build (ci/Dockerfile: Flutter + Android SDK + herramientas)
+                                           └─ Jenkinsfile
+```
+
+| Etapa | Cuándo | Qué hace |
+|---|---|---|
+| Configuración | Siempre | Genera `env.json` desde las credenciales (la app no arranca sin él) |
+| Dependencias | Siempre | `flutter pub get` |
+| Análisis | Siempre | `dart format --set-exit-if-changed` y `flutter analyze` |
+| Pruebas | Siempre | `flutter test` |
+| Base de datos | `main`, PRs a `main` y cuando cambia `supabase/` | `supabase db start`, `supabase db lint` y `supabase/tests/pruebas.sql` |
+| Seguridad | Siempre | Gitleaks (secretos), mobsfscan (Android) y osv-scanner (`pubspec.lock`) |
+| Build Debug | Siempre | `flutter build apk --debug` (se archiva el APK) |
+| Build Web | Siempre | `flutter build web` de la PWA (iPad, Chromebook, navegador) |
+| Build Release | `main` con la llave | APK y AAB firmados, versión `2.0.<build>` con build-number `100 + build` |
+| Publicar en GitHub | `main` con la llave | Release `v2.0.<build>` con `monchosos-2.0.<build>.apk` y `monchosos.apk` |
+| Desplegar web | PRs y `main`, si existen las credenciales de Cloudflare | Sube a Cloudflare Pages la página (`/`) y la PWA (`/app/`). PR → URL de prueba `pr-N.monchosos.pages.dev`; `main` → producción `monchosos.pages.dev` |
+
+**iPad y Chromebook usan la PWA** (`https://monchosos.pages.dev/app/`): no hace falta App Store, TestFlight, Mac ni licencias. No hay build nativo de iOS en el CI.
+
+El resultado llega al PR como el check **`continuous-integration/jenkins/pr-merge`**. Es el **único** check obligatorio.
+
+**Importante:** si la laptop o Docker Desktop están apagados, no corre el CI: no se puede fusionar nada y no sale ningún release.
+
+## 1. Levantar Jenkins
+
+Requiere Docker Desktop.
+
+```bash
+cd infra/jenkins
+cp .env.example .env          # en PowerShell: Copy-Item .env.example .env
+```
+
+En `.env`: `DOCKER_GID=0` (Docker Desktop) y `JENKINS_PORT=8081` (el 8080 lo ocupa XAMPP).
+
+```bash
+docker compose up -d --build
+```
+
+Jenkins queda en **http://localhost:8081**, solo accesible desde esta computadora, a propósito.
+
+> **Si Jenkins ya estaba instalado** (el del proyecto Kotlin), no hace falta reinstalarlo. Solo agrega el job `monchosos-flutter` (paso 4).
+
+## 2. Contraseña inicial (solo en una instalación nueva)
+
+```bash
+docker compose exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+```
+
+1. Entra a http://localhost:8081 y pega la contraseña.
+2. Elige **"Install suggested plugins"**. Los que necesita el pipeline ya vienen en la imagen.
+3. Crea tu usuario administrador **con una contraseña fuerte**.
+4. En **Manage Jenkins → Security**, verifica que **"Allow users to sign up"** esté **desactivado**. Jenkins controla Docker, así que quien entre puede controlar la computadora.
+
+## 3. Credenciales
+
+En **Manage Jenkins → Credentials → System → Global credentials → Add Credentials**, con **exactamente** estos IDs:
+
+| ID | Tipo | Contenido |
+|---|---|---|
+| `android-keystore` | Secret file | El `.jks` de la llave de release (**la misma** de la app Kotlin) |
+| `keystore-password` | Secret text | Contraseña del keystore |
+| `key-alias` | Secret text | `monchosos` |
+| `key-password` | Secret text | Contraseña de la llave |
+| `google-web-client-id` | Secret text | ID de cliente web de Google (`…apps.googleusercontent.com`) |
+| `supabase-url` | Secret text | `https://<proyecto>.supabase.co` |
+| `supabase-publishable-key` | Secret text | Llave `sb_publishable_…`. **Nunca** la `service_role`/`secret` |
+| `github-token` | Username with password | Usuario de GitHub + token con **Contents: Read and write** en este repo |
+| `cloudflare-api-token` | Secret text | Token de Cloudflare con permiso **Cloudflare Pages: Edit** (ver paso 6) |
+| `cloudflare-account-id` | Secret text | *Account ID* de Cloudflare (ver paso 6) |
+
+- Si `github-token` es un token *fine-grained*, agrégale el repo `Monchosos_Gestor` en GitHub → Settings → Developer settings → Personal access tokens. Sin eso, Jenkins no ve el repo, no manda el check a los PRs y no puede crear releases.
+- Mientras no exista `android-keystore`, el build de `main` **omite** el release (lo avisa en el log) y queda en verde.
+- **La llave tiene que ser la misma de la app Kotlin.** Si cambia, los teléfonos no aceptan la actualización.
+
+## 4. Crear el job `monchosos-flutter`
+
+El job viene en `infra/jenkins/jobs/monchosos-flutter/config.xml`. Solo descubre `main` y los PRs del propio repo, nunca de forks, y revisa GitHub cada 5 minutos (sin webhook ni túnel).
+
+**En un Jenkins que ya existe**, cópialo y reinicia (en Git Bash, desde `infra/jenkins`):
+
+```bash
+MSYS_NO_PATHCONV=1 docker compose exec jenkins mkdir -p /var/jenkins_home/jobs/monchosos-flutter
+MSYS_NO_PATHCONV=1 docker compose cp jobs/monchosos-flutter/config.xml jenkins:/var/jenkins_home/jobs/monchosos-flutter/config.xml
+docker compose restart jenkins
+```
+
+En una instalación nueva, la imagen lo copia sola la primera vez.
+
+El job de Kotlin (`monchosos`) y este comparten el único ejecutor y hacen fila. Cuando se retire el proyecto Kotlin, borra su job.
+
+## 5. Reglas de ramas en GitHub
+
+**Settings → Rules → New branch ruleset**, una para `main` y otra para `develop`:
+
+- **Enforcement:** Active.
+- **Restrict deletions**, **Block force pushes** y **Require a pull request before merging**, con 0 aprobaciones.
+- **Require status checks to pass** con un solo check: `continuous-integration/jenkins/pr-merge`. Aparece en el buscador después del primer build de Jenkins en un PR; si no, escríbelo a mano.
+- "Require branches to be up to date" **sin marcar**.
+- **No agregues checks de Actions:** aquí no hay Actions, y un check que nadie manda deja los PRs bloqueados para siempre.
+
+Además:
+
+- **Settings → General → Pull Requests:** marca **Allow auto-merge**.
+
+## 6. Cloudflare Pages (página de descarga y PWA)
+
+La web vive en una cuenta de Cloudflare, no en el repo, para que el negocio pueda quedarse con ella aunque cambie de programador. Para probar se usa la cuenta de Francisco; después conviene una cuenta del negocio con Francisco como miembro.
+
+1. Crea la cuenta en https://dash.cloudflare.com (plan Free: permite uso comercial y no tiene límite de tráfico).
+2. **Account ID:** en el panel, **Workers & Pages** → columna derecha, *Account ID*. Guárdalo en Jenkins como `cloudflare-account-id`.
+3. **Token:** foto de perfil → **My Profile → API Tokens → Create Token → Create Custom Token**:
+   - Permissions: **Account → Cloudflare Pages → Edit**.
+   - Account Resources: **Include → tu cuenta**.
+   Guárdalo en Jenkins como `cloudflare-api-token` (se muestra una sola vez).
+4. No hay que crear el proyecto: el primer despliegue crea `monchosos` (si el nombre ya está ocupado en `pages.dev`, Cloudflare agrega un sufijo; revisa la URL en el log y en Supabase).
+5. **Dominio propio (cuando lo compren):** Cloudflare → Domain Registration (a precio de costo), y en el proyecto **Custom domains → Set up a domain**. El código no cambia; solo hay que agregar la URL nueva en Supabase (paso 7).
+
+## 7. Login de la PWA (una sola vez)
+
+En web el login no usa el SDK de Google: Supabase redirige a Google y regresa a la página. Hay que permitirlo:
+
+1. **Supabase → Authentication → URL Configuration → Redirect URLs:** agrega
+   - `https://monchosos.pages.dev/app/` (producción),
+   - `https://*.monchosos.pages.dev/**` (las URLs de prueba de cada PR),
+   - `http://localhost:8099/` (para probar en la laptop).
+2. **Supabase → Authentication → Providers → Google:** el *Client ID* (cliente web) ya está; para este flujo también necesita el **Client Secret** de ese mismo cliente web de Google Cloud.
+3. **Google Cloud → Clientes → el cliente "Aplicación web" → URIs de redireccionamiento autorizados:** debe estar `https://<ref-del-proyecto>.supabase.co/auth/v1/callback`.
+
+El APK de Android sigue usando el login nativo y no necesita nada de esto.
+
+## 8. Solución de problemas
+
+| Síntoma | Causa y solución |
+|---|---|
+| `permission denied` en `/var/run/docker.sock` | `DOCKER_GID` incorrecto en `.env`. Revísalo y ejecuta `docker compose up -d` |
+| Falta una plataforma, el NDK o CMake | Los `ARG` de `ci/Dockerfile` no coinciden con lo que pide la versión de Flutter |
+| `$'\r': command not found` | Un script con finales de Windows. `.gitattributes` lo evita; revisa que no se haya cambiado |
+| `Gradle build daemon disappeared unexpectedly` | Se acabó la memoria de Docker. `init.groovy.d/ejecutores.groovy` deja un solo build a la vez |
+| El primer build tarda mucho | Normal: construye la imagen y descarga Gradle y paquetes. Los cachés quedan en `jenkins_home/caches/monchosos-flutter` |
+| La etapa Base de datos no conecta | Desde el contenedor de build la base está en `host.docker.internal:54322`, no en `127.0.0.1` |
+| El PR se queda esperando el check | Jenkins apagado, `github-token` sin acceso al repo, o el nombre del check en la regla no coincide |
+| El release no inicia sesión con Google | Falta registrar el SHA-1 de la llave en Google Cloud |
+| El release no se conecta a Supabase | Faltan `supabase-url` o `supabase-publishable-key` |
+| En la PWA, Google dice `redirect_uri_mismatch` o regresa sin sesión | Falta el paso 7 (Redirect URLs en Supabase, Client Secret o el callback en Google Cloud) |
+| Desplegar web: `Authentication error` | El token no tiene **Cloudflare Pages: Edit** o `cloudflare-account-id` no es de esa cuenta |
+| La PWA no muestra la versión nueva | Cierra la app por completo y vuelve a abrirla (`pagina/_headers` hace que siempre pregunte por la versión nueva) |
+
+## Mantenimiento
+
+- Si cambias `jobs/monchosos-flutter/config.xml`, Jenkins **no** lo toma solo: cópialo a mano como en el paso 4.
+- La etapa **Base de datos** no usa `supabase db start` (dentro del contenedor busca la base en 127.0.0.1): `ci/base_de_datos.sh` levanta la imagen `supabase/postgres` en una red propia, aplica `ci/auth_supabase.sql` y las migraciones, y corre el linter y las pruebas.
+- **Dependabot** abre PRs semanales a `develop` (paquetes `pub`, Gradle de `android/` y las imágenes de `ci/` e `infra/jenkins/`). Solo actualiza el `FROM`; los `ARG` del Dockerfile (Flutter, SDK, NDK, herramientas) se cambian a mano.
+- Para actualizar Jenkins: acepta el PR de Dependabot y ejecuta `docker compose up -d --build` en `infra/jenkins`. Los datos están en el volumen `jenkins_home`.

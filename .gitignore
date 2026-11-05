@@ -46,3 +46,42 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Logs y archivos del sistema
+Thumbs.db
+ehthumbs.db
+
+# Artefactos de compilación y paquetes
+*.aab
+*.apk
+*.apks
+*.ipa
+output-metadata.json
+*.hprof
+
+# Configuración local y credenciales: NUNCA se suben
+local.properties
+env.json
+android/key.properties
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# CI: caches del contenedor y .env de Jenkins
+.gradle-home/
+infra/jenkins/.env
+
+# Documentación local (no se sube)
+Documentacion_Monchosos.docx
+CI_CD_PLAN.md
+# SQL generado por supabase/importar_comandas.py (trae las ventas reales del negocio)
+comandas*.sql
+# Excels del negocio (ventas, precios): datos reales, el repo es público
+*.xlsx
+
+# Contexto para migrar a Flutter: lleva credenciales, NUNCA se sube
+MIGRACION_FLUTTER.md

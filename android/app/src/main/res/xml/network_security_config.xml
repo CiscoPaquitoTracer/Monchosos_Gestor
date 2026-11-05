@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Cifrado en las conexiones: la app solo puede hablar por HTTPS (TLS).
+    - cleartextTrafficPermitted="false" bloquea cualquier http:// sin cifrar.
+    - Solo se confía en certificados del sistema, no en los que instale el usuario
+      (evita que un proxy/certificado falso intercepte el tráfico).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

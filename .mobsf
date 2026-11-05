@@ -1,0 +1,7 @@
+# Configuración de mobsfscan (etapa "Seguridad" del Jenkinsfile).
+---
+- ignore-rules:
+    # Falso positivo: mobsfscan no lee targetSdk = flutter.targetSdkVersion (36) y asume 26.
+    # Con targetSdk >= 29 Android ya corrige StrandHogg 2.0, y además el manifiesto tiene
+    # taskAffinity="" en la actividad (StrandHogg 1).
+    - android_task_hijacking2
